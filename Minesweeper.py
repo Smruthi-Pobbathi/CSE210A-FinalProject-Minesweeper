@@ -74,7 +74,7 @@ class Board:
 
         if self.board[row][col] == '*':
             return False
-        elif self.board[row][col] > 0 :
+        elif self.board[row][col] > 0:
             return True
         
         # self.board[row][col] == 0
@@ -88,7 +88,37 @@ class Board:
                 self.dig(r, c)
         # if our initial didn't hit a mine, we should't hit a mine here - so return True
         return True
-                
+
+    dx = [1, -1, 1, -1, 0, 0, 1, -1]
+    dy = [1, -1, -1, 1, 1, -1, 0, 0]
+
+    def dfs_dig(self, row, col):
+        self.dug.add((row, col))
+        if len(self.dug) >= (self.board_size) ** 2:
+            return True
+
+        if self.board[row][col] == '*':
+            return False
+
+        elif self.board[row][col] == 0:
+            if (row, col) not in self.dug:
+                r = max(0, row - 1)
+                c = max(0, col - 1)
+                return self.dfs_dig(r, c)
+
+        elif self.board[row][col] > 0:
+            for i in range(0-8):
+                r = row + self.dx[i]
+                c = col + self.dy[i]
+                if self.is_valid_cell(r, c):
+                    return self.dfs_dig(r,c)
+
+    def is_valid_cell(self, r, c):
+        if r >= 0 and r < self.board_size and c >= 0 and c < self.board_size:
+            return True
+        else: return False
+         
+
     def __str__(self):
         # return a string that displays board.
         display_board = [[None for _ in range(self.board_size)]for _ in range(self.board_size)]
@@ -136,7 +166,7 @@ class Board:
         return string_rep
 
 # play the game
-def play(board_size, no_of_mines = 10):
+def play(board_size, no_of_mines = 2):
     # 1. Create board and place mines.
 
     board = Board(board_size, no_of_mines)
@@ -157,7 +187,7 @@ def play(board_size, no_of_mines = 10):
             continue
 
         # if cell is valid
-        is_successful = board.dig(row, col)
+        is_successful = board.dfs_dig(row, col)
 
         if not is_successful:
             # dug a mine - game over
