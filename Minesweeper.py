@@ -1,6 +1,11 @@
 import random
 import re
+from enum import Enum 
 
+class Levels(Enum):
+    BEGINNER = (8, 10)
+    INTERMEDIATE = (15, 40)
+    ADVANCED = (30, 99)
 class Board:
     def __init__(self, board_size, no_of_mines):
         self.board_size = board_size
@@ -13,6 +18,7 @@ class Board:
         # keep a set to keep track of locations uncovered. 
         # This is saved as a set of tuple(row, col)
         self.dug = set()
+        self.mark = set()
 
     def create_board(self):
         # create a board for given board_size and no_of_mines.
@@ -94,6 +100,7 @@ class Board:
 
     def dfs_dig(self, row, col):
         self.dug.add((row, col))
+        # print(self.board)
         if len(self.dug) >= (self.board_size) ** 2:
             return True
 
@@ -112,6 +119,57 @@ class Board:
                 c = col + self.dy[i]
                 if self.is_valid_cell(r, c):
                     return self.dfs_dig(r,c)
+
+    def single_point(self, row, col):
+        next_set = set() # I have dug set. not sure if I need this
+
+        while self.board[row][col] != '*' and len(self.dug) - self.no_of_mines >= (self.board_size) ** 2:
+            # no need to get random starting cell cz we are taking that from user.
+            next_set.add(row, col)
+            for (row,col) in next_set:
+                self.dug.add(row, col)
+                if self.board[row][col] == '*':
+                    return False
+                unmarked_neighbors = set()
+                for i in range(0-8):
+                    r = row + self.dx[i]
+                    c = col + self.dy[i] 
+                    if (r,c) not in self.dug():
+                        unmarked_neighbors.add(r, c)
+                if self.is_afn(row, col):
+                    for element in unmarked_neighbors:
+                        next_set.add(element[0], element[1])
+                elif self.is_amn(row, col):
+                    for element in unmarked_neighbors:
+                        self.dug.add(element[0], element[1])
+                else:
+                    continue
+                # check if unmarked is all free neighbors i.e., all are zeroes
+                # write functions to check AFN and AMN - which returns boolean values
+
+    def is_afn(self, row, col):
+        count = 0
+        for i in range(0-8):
+            r = row + self.dx[i]
+            c = col + self.dy[i]
+            if self.board[r][c] == 0:
+                count += 1
+        if count == 8:
+            return True
+        else:
+            return False
+    
+    def is_amn(self, row, col):
+        count = 0
+        for i in range(0-8):
+            r = row + self.dx[i]
+            c = col + self.dy[i]
+            if self.board[r][c] >= 0:
+                count += 1
+        if count == 8:
+            return True
+        else:
+            return False
 
     def is_valid_cell(self, r, c):
         if r >= 0 and r < self.board_size and c >= 0 and c < self.board_size:
@@ -187,7 +245,7 @@ def play(board_size, no_of_mines = 2):
             continue
 
         # if cell is valid
-        is_successful = board.dfs_dig(row, col)
+        is_successful = board.single_point(row, col)
 
         if not is_successful:
             # dug a mine - game over
@@ -195,6 +253,7 @@ def play(board_size, no_of_mines = 2):
     # 2 ways to d loop if is_successful = True
     if is_successful:
         print("You Won!!")
+        
     else: 
         print("Game Over!!")
         # print the board
@@ -202,5 +261,16 @@ def play(board_size, no_of_mines = 2):
         print(board)
 
 if __name__== '__main__':
-    board_size = input("Enter board size: ")
-    play(int(board_size))
+    print("b - beginner")
+    print("i - intermediate")
+    print("a - advanced")
+    level = input("Choose your level: ")
+    if level == 'b':
+        play(Levels.BEGINNER.value[0],Levels.BEGINNER.value[1] )
+    elif level == 'i':
+        play(Levels.INTERMEDIATE.value[0],Levels.INTERMEDIATE.value[1] )
+    elif level == 'a':
+        play(Levels.ADVANCED.value[0],Levels.ADVANCED.value[1] )
+    else:
+        print("Invalid entry. Try again")
+
