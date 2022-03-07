@@ -114,58 +114,106 @@ class Board:
                 return self.dfs_dig(r, c)
 
         elif self.board[row][col] > 0:
-            for i in range(0-8):
+            for i in range(0, 8):
                 r = row + self.dx[i]
                 c = col + self.dy[i]
                 if self.is_valid_cell(r, c):
                     return self.dfs_dig(r,c)
 
     def single_point(self, row, col):
-        next_set = set() # I have dug set. not sure if I need this
+        next_set = set() # set s in algorithm
 
-        while self.board[row][col] != '*' and len(self.dug) - self.no_of_mines >= (self.board_size) ** 2:
+        while self.board[row][col] != '*' and len(self.dug) + self.no_of_mines == (self.board_size) ** 2:
             # no need to get random starting cell cz we are taking that from user.
-            next_set.add(row, col)
-            for (row,col) in next_set:
-                self.dug.add(row, col)
+            next_set.add((row, col))
+            for (row,col) in next_set.copy():
+                self.dug.add((row, col))
                 if self.board[row][col] == '*':
                     return False
-                unmarked_neighbors = set()
-                for i in range(0-8):
-                    r = row + self.dx[i]
-                    c = col + self.dy[i] 
-                    if (r,c) not in self.dug():
-                        unmarked_neighbors.add(r, c)
+                unmarked_neighbors = self.get_unmarked_neighbors(row, col)
+                # check if unmarked is all free neighbors i.e., all are zeroes
                 if self.is_afn(row, col):
                     for element in unmarked_neighbors:
-                        next_set.add(element[0], element[1])
+                        next_set.add((element[0], element[1]))
                 elif self.is_amn(row, col):
                     for element in unmarked_neighbors:
-                        self.dug.add(element[0], element[1])
+                        self.dug.add((element[0], element[1]))
                 else:
                     continue
-                # check if unmarked is all free neighbors i.e., all are zeroes
-                # write functions to check AFN and AMN - which returns boolean values
 
-    def is_afn(self, row, col):
-        count = 0
-        for i in range(0-8):
+    def double_set_single_point(self, row, col):
+        next_set = set()
+        next_set.add((row, col))
+        q_set = set()
+
+        while self.board[row][col] != '*' and len(self.dug) + self.no_of_mines >= (self.board_size) ** 2:
+            if len(next_set) == 0:
+                x = (random.randint(0, self.board_size), random.randint(0, self.board_size))
+                next_set.add(x)
+            while len(next_set) != 0:
+                x = next_set.pop()
+                if self.is_valid_cell(x[0], x[1]):
+                    r = x[0]
+                    c = x[1]
+                    self.dug.add(x)
+                    if self.board[r][c] == '*':
+                        return False
+                    if self.is_afn(r, c):
+                        unmarked_neighbors = self.get_unmarked_neighbors(r, c)
+                        next_set = next_set.union(unmarked_neighbors)
+                    else:
+                        cell = (r, c)
+                        q_set = q_set.union({cell})
+
+            for q in q_set.copy():
+                r = q[0]
+                c = q[1]
+                if self.is_amn(r, c):
+                    unmarked_neighbors_q = self.get_unmarked_neighbors(r, c)
+                    for element in unmarked_neighbors_q:
+                        self.dug.add((element[0], element[1]))
+                    q_set.remove(q)
+            for q in q_set.copy():
+                r = q[0]
+                c = q[1]
+                unmarked_neighbors_q = self.get_unmarked_neighbors(r, c)
+                if self.is_afn(r, c):
+                    next_set = next_set.union(unmarked_neighbors_q)
+                    q_set.remove(r, c)
+                
+
+    def get_unmarked_neighbors(self, row, col):
+        unmarked_neighbors = set()
+        for i in range(0, 8):
             r = row + self.dx[i]
             c = col + self.dy[i]
-            if self.board[r][c] == 0:
-                count += 1
+            if (r, c) not in self.dug:
+                unmarked_neighbors.add((r, c))
+        return unmarked_neighbors
+    
+    def is_afn(self, row, col):
+    # Checks if the neighbors of a given cell are all free
+        count = 0
+        for i in range(0, 8):
+            r = row + self.dx[i]
+            c = col + self.dy[i]
+            if self.is_valid_cell(r, c):
+                if self.board[r][c] == 0:
+                    count += 1
         if count == 8:
             return True
         else:
             return False
     
     def is_amn(self, row, col):
+    # Checks if the neighbors of a given cell are all mines
         count = 0
-        for i in range(0-8):
+        for i in range(0, 8):
             r = row + self.dx[i]
             c = col + self.dy[i]
-            if self.board[r][c] >= 0:
-                count += 1
+            if self.is_valid_cell(r, c):
+                if self.board[r][c] != '*' and int(self.board[r][c]) >= 0:
+                    count += 1
         if count == 8:
             return True
         else:
@@ -176,7 +224,6 @@ class Board:
             return True
         else: return False
          
-
     def __str__(self):
         # return a string that displays board.
         display_board = [[None for _ in range(self.board_size)]for _ in range(self.board_size)]
@@ -224,7 +271,7 @@ class Board:
         return string_rep
 
 # play the game
-def play(board_size, no_of_mines = 2):
+def play(board_size, no_of_mines, algorithm):
     # 1. Create board and place mines.
 
     board = Board(board_size, no_of_mines)
@@ -243,9 +290,16 @@ def play(board_size, no_of_mines = 2):
         if row < 0 or row >= board_size or col < 0 or col >= board_size:
             print("Invalid cell. Try again.")
             continue
-
+        is_successful = False
         # if cell is valid
-        is_successful = board.single_point(row, col)
+        if algorithm == 1:
+            is_successful = board.dig(row, col)
+        if algorithm == 2:
+            is_successful = board.dfs_dig(row, col)
+        if algorithm == 3:
+            is_successful = board.single_point(row, col)
+        if algorithm == 4:
+            is_successful = board.double_set_single_point(row, col)
 
         if not is_successful:
             # dug a mine - game over
@@ -264,13 +318,33 @@ if __name__== '__main__':
     print("b - beginner")
     print("i - intermediate")
     print("a - advanced")
+
     level = input("Choose your level: ")
+
+    print("1. Play human")
+    print("2. Run dfs algorithm")
+    print("3. Run single point algorithm")
+    print("4. Play double set sinle point algorithm")
+
+    algoritm = input("Choose your algorithm: ")
+
     if level == 'b':
-        play(Levels.BEGINNER.value[0],Levels.BEGINNER.value[1] )
+        if int(algoritm) == 1 or int(algoritm) == 2 or int(algoritm) == 3 or int(algoritm) == 4:
+            play(Levels.BEGINNER.value[0],Levels.BEGINNER.value[1], int(algoritm))
+        else:
+            print("Invalid algorithm.")
+
     elif level == 'i':
-        play(Levels.INTERMEDIATE.value[0],Levels.INTERMEDIATE.value[1] )
+        if int(algoritm) == 1 or int(algoritm) == 2 or int(algoritm) == 3 or int(algoritm) == 4:
+            play(Levels.INTERMEDIATE.value[0],Levels.INTERMEDIATE.value[1], int(algoritm))
+        else:
+            print("Invalid algorithm.")
+
     elif level == 'a':
-        play(Levels.ADVANCED.value[0],Levels.ADVANCED.value[1] )
+        if int(algoritm) == 1 or int(algoritm) == 2 or int(algoritm) == 3 or int(algoritm) == 4:
+            play(Levels.ADVANCED.value[0],Levels.ADVANCED.value[1], int(algoritm))
+        else:
+            print("Invalid algorithm.")
+        
     else:
         print("Invalid entry. Try again")
-
